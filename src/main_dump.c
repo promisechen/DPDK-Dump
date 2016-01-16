@@ -23,16 +23,21 @@
 #define MEMPOOL_CACHE_SZ 512  					// Max is 512
 
 #define INTERMEDIATERING_NAME "intermedate_ring"
-
-#define RX_QUEUE_SZ 4096			// The size of rx queue. Max is 4096 and is the one you'll have best performances with. Use lower if you want to use Burst Bulk Alloc.
+/*promisechen mod. 2016.1.16 
+	RX_QUEUE_SZ 4096->128  
+	PKT_BURST_SZ 4096->32 
+	buffer_size 1048576->4096 ;buffer_size >= RX_QUEUE_SZ*port_num !!!
+	
+*/
+#define RX_QUEUE_SZ 128			// The size of rx queue. Max is 4096 and is the one you'll have best performances with. Use lower if you want to use Burst Bulk Alloc.
 #define TX_QUEUE_SZ 256			// Unused, you don't tx packets
-#define PKT_BURST_SZ 4096		// The max size of batch of packets retreived when invoking the receive function. Use the RX_QUEUE_SZ for high speed
+#define PKT_BURST_SZ 32		// The max size of batch of packets retreived when invoking the receive function. Use the RX_QUEUE_SZ for high speed
 
 /* Global vars */
 char * file_name = NULL;
 pcap_dumper_t * pcap_file_p;
 uint64_t max_packets = 0 ;
-uint64_t buffer_size = 1048576;
+uint64_t buffer_size = 4096;
 uint64_t seconds_rotation = 0;
 uint64_t last_rotation = 0;
 int64_t  nb_rotations=0;
@@ -83,8 +88,8 @@ int main(int argc, char **argv)
 	if (nb_sys_ports <= 0) FATAL_ERROR("Cannot find ETH devices\n");
 	
 	/* Create a mempool with per-core cache, initializing every element for be used as mbuf, and allocating on the current NUMA node */
-	pktmbuf_pool = rte_mempool_create(MEMPOOL_NAME, buffer_size-1, MEMPOOL_ELEM_SZ, MEMPOOL_CACHE_SZ, sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,rte_socket_id(), 0);
-	if (pktmbuf_pool == NULL) FATAL_ERROR("Cannot create cluster_mem_pool. Errno: %d [ENOMEM: %d, ENOSPC: %d, E_RTE_NO_TAILQ: %d, E_RTE_NO_CONFIG: %d, E_RTE_SECONDARY: %d, EINVAL: %d, EEXIST: %d]\n", rte_errno, ENOMEM, ENOSPC, E_RTE_NO_TAILQ, E_RTE_NO_CONFIG, E_RTE_SECONDARY, EINVAL, EEXIST  );
+	pktmbuf_pool = rte_mempool_create(MEMPOOL_NAME, buffer_size, MEMPOOL_ELEM_SZ, MEMPOOL_CACHE_SZ, sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,rte_socket_id(), 0);
+	if (pktmbuf_pool == NULL) FATAL_ERROR("Cannot create cluster_mem_pool. Errno: %d [ENOMEM: %d, ENOSPC: %d, E_RTE_NO_CONFIG: %d, E_RTE_SECONDARY: %d, EINVAL: %d, EEXIST: %d]\n", rte_errno, ENOMEM, ENOSPC, E_RTE_NO_CONFIG, E_RTE_SECONDARY, EINVAL, EEXIST  );
 	
 	/* Init intermediate queue data structures: the ring. */
 	intermediate_ring = rte_ring_create (INTERMEDIATERING_NAME, buffer_size, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ );
@@ -320,11 +325,12 @@ static void init_port(int i) {
 		/* Configure rx queue j of current device on current NUMA socket. It takes elements from the mempool */
 		ret = rte_eth_rx_queue_setup(i, 0, RX_QUEUE_SZ, rte_socket_id(), &rx_conf, pktmbuf_pool);
 		if (ret < 0) FATAL_ERROR("Error configuring receiving queue\n");
+		#if 0
 		/* Configure mapping [queue] -> [element in stats array] */
 		ret = rte_eth_dev_set_rx_queue_stats_mapping 	(i, 0, 0);
 		if (ret < 0) FATAL_ERROR("Error configuring receiving queue stats\n");
 
-
+#endif
 		/* Configure tx queue of current device on current NUMA socket. Mandatory configuration even if you want only rx packet */
 		ret = rte_eth_tx_queue_setup(i, 0, TX_QUEUE_SZ, rte_socket_id(), &tx_conf);
 		if (ret < 0) FATAL_ERROR("Error configuring transmitting queue. Errno: %d (%d bad arg, %d no mem)\n", -ret, EINVAL ,ENOMEM);
