@@ -25,13 +25,13 @@ It can achieve high speed when the disks are fast.
 ## 3. Installation
 
 ### 3.1 Install DPDK
-Install DPDK 1.8.0. With other versions is not guaranted it works properly.
+Install DPDK 2.0.0. With other versions is not guaranted it works properly.
 Make the enviroment variable `RTE_SDK` and `RTE_TARGET` to point respectively to DPDK installation directory and compilation target.
 For documentation and details see http://dpdk.org/doc/guides/linux_gsg/index.html
 ```bash
-	wget http://dpdk.org/browse/dpdk/snapshot/dpdk-1.8.0.tar.gz
-	tar xzf dpdk-1.8.0.tar.gz
-	cd dpdk-1.8.0
+	wget http://dpdk.org/browse/dpdk/snapshot/dpdk-2.0.0.tar.gz
+	tar xzf dpdk-2.0.0.tar.gz
+	cd dpdk-2.0.0
 	export RTE_SDK=$(pwd)
 	export RTE_TARGET=x86_64-native-linuxapp-gcc
 	make install T=$RTE_TARGET
@@ -42,7 +42,7 @@ For documentation and details see http://dpdk.org/doc/guides/linux_gsg/index.htm
 ### 3.2 Install DPDK-Dump
 Get it from the git repository. Remind to set `RTE_SDK` and `RTE_TARGET`.
 ```bash
-	git clone https://github.com/marty90/DPDK-Dump
+	git clone https://github.com/promisechen/DPDK-Dump/DPDK-Dump
 	cd DPDK-Dump
 	make
 	cd ..
